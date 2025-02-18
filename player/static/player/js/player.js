@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // DOM elements (existing)
+    // ------------------------------
+    // DOM Elements
+    // ------------------------------
     const audioPlayer = document.getElementById('audio-player');
     const playBtn = document.getElementById('play-btn');
     const prevBtn = document.getElementById('prev-btn');
@@ -23,26 +25,70 @@ document.addEventListener('DOMContentLoaded', function() {
     const directoryPathInput = document.getElementById('directory-path');
     const directoryError = document.getElementById('directory-error');
 
-    // Visualization elements (new)
+    // New UI elements for mood & recommendation
+    const songMoodEl = document.getElementById('song-mood');
+    const recommendationBtn = document.getElementById('recommendation-btn');
+    const nextSongTitleEl = document.getElementById('next-song-title');
+
+    // Online search elements
+    const loadOnlineBtn = document.getElementById('load-online-btn');
+    const searchOnlineInput = document.getElementById('online-search-input');
+    const searchOnlineBtn = document.getElementById('search-online-btn');
+
+    // Visualization elements
     const toggleVisualisationBtn = document.getElementById('toggle-visualisation');
     const fullscreenVisualisationBtn = document.getElementById('fullscreen-visualisation-btn');
     const visualisationSelect = document.getElementById('visualisation-select');
     const visualiserCanvas = document.getElementById('visualiser');
     const canvasCtx = visualiserCanvas.getContext('2d');
 
-    // Player & visualization state
+    // ------------------------------
+    // Global State
+    // ------------------------------
     let songs = Array.from(document.querySelectorAll('.song-item'));
     let currentSongIndex = -1;
     let isPlaying = false;
     let visualisationEnabled = false;
-    
-    // Visualization mode (preset selector)
     let currentVisualisationMode = visualisationSelect.value; // e.g., "fractal"
 
     // Set initial volume
     audioPlayer.volume = volumeControl.value;
 
-    // Player event listeners (existing)
+    // ------------------------------
+    // High-Quality Visualization Setup
+    // ------------------------------
+    // Define a constant for the CSS height (this value will be used in drawing)
+    const canvasCSSHeight = 400;
+    function resizeCanvas() {
+        // Get container width to match the rest of the elements
+        const container = document.querySelector('.container');
+        if (container) {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = container.getBoundingClientRect();
+            visualiserCanvas.style.width = '100%';
+            visualiserCanvas.style.height = canvasCSSHeight + 'px';
+            visualiserCanvas.width = rect.width * dpr;
+            visualiserCanvas.height = canvasCSSHeight * dpr;
+            // Scale context for high DPI
+            canvasCtx.scale(dpr, dpr);
+        }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Set up AudioContext, source, and analyser
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const sourceNode = audioContext.createMediaElementSource(audioPlayer);
+    const analyser = audioContext.createAnalyser();
+    analyser.fftSize = 512; // Higher FFT size for improved detail
+    const bufferLength = analyser.frequencyBinCount; // 256 bins
+    const dataArray = new Uint8Array(bufferLength);
+    sourceNode.connect(analyser);
+    analyser.connect(audioContext.destination);
+
+    // ------------------------------
+    // Player Event Listeners
+    // ------------------------------
     playBtn.addEventListener('click', togglePlay);
     prevBtn.addEventListener('click', playPrevious);
     nextBtn.addEventListener('click', playNext);
@@ -53,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
     searchInput.addEventListener('input', filterSongs);
     refreshBtn.addEventListener('click', refreshLibrary);
 
-    // Modal event listeners (existing)
+    // Modal Event Listeners
     addDirectoryBtn.addEventListener('click', openDirectoryModal);
     closeModalBtn.addEventListener('click', closeDirectoryModal);
     window.addEventListener('click', function(event) {
@@ -61,11 +107,61 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     saveDirectoryBtn.addEventListener('click', saveDirectory);
 
-    // Attach song listeners (existing)
-    attachSongListeners();
+    // ------------------------------
+    // Online Songs Loading & Search
+    // ------------------------------
+    loadOnlineBtn.addEventListener('click', function() {
+        console.log("Load Online Songs button clicked");
+        fetchOnlineSongs();
+    });
+    
+    searchOnlineBtn.addEventListener('click', function() {
+        const query = searchOnlineInput.value.trim();
+        console.log("Searching online songs for:", query);
+        fetchOnlineSongs(query);
+    });
+    
+    function fetchOnlineSongs(query = '') {
+        const url = query ? `/api/online-songs/?query=${encodeURIComponent(query)}` : '/api/online-songs/';
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                console.log("Received online songs data:", data);
+                const songList = document.getElementById('song-list');
+                songList.innerHTML = '';
+                if (data.online_songs && data.online_songs.length > 0) {
+                    data.online_songs.forEach(song => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'song-item';
+                        // Mark online songs by prefixing the id
+                        tr.setAttribute('data-id', 'online-' + song.id);
+                        tr.setAttribute('data-title', song.title);
+                        tr.setAttribute('data-artist', song.artist);
+                        tr.setAttribute('data-album', song.album);
+                        tr.setAttribute('data-duration', song.duration);
+                        tr.setAttribute('data-cover', song.cover_image);
+                        tr.setAttribute('data-audio-url', song.audio_url);
+                        tr.innerHTML = `
+                            <td>${song.title}</td>
+                            <td>${song.artist}</td>
+                            <td>${song.album}</td>
+                            <td>${formatTime(song.duration)}</td>
+                        `;
+                        songList.appendChild(tr);
+                    });
+                    songs = Array.from(document.querySelectorAll('.song-item'));
+                    attachSongListeners();
+                } else {
+                    songList.innerHTML = '<tr><td colspan="4">No online songs found.</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching online songs:', error);
+            });
+    }
 
     // ------------------------------
-    // Audio Player Functions (existing)
+    // Playback Functions
     // ------------------------------
     function togglePlay() {
         if (!audioPlayer.src) return;
@@ -116,6 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return `${min}:${sec < 10 ? '0' + sec : sec}`;
     }
     
+    // Updated playSong: handles both local and online songs.
     function playSong(index) {
         if (index < 0 || index >= songs.length) return;
         const song = songs[index];
@@ -124,23 +221,56 @@ document.addEventListener('DOMContentLoaded', function() {
         const artist = song.getAttribute('data-artist');
         const album = song.getAttribute('data-album');
         const cover = song.getAttribute('data-cover');
-        
-        document.getElementById('song-title').textContent = title;
-        document.getElementById('song-artist').textContent = artist;
-        document.getElementById('song-album').textContent = album;
-        if (cover) {
-            document.getElementById('cover-image').src = cover;
-        } else {
-            document.getElementById('cover-image').src = '/static/player/img/default-cover.jpg';
-        }
-        
+        const audioUrl = song.getAttribute('data-audio-url'); // Present for online songs
+
+        // Update UI for song info
+        songTitle.textContent = title;
+        songArtist.textContent = artist;
+        songAlbum.textContent = album;
+        coverImage.src = cover ? cover : '/static/player/img/default-cover.jpg';
+
+        // Mark song as active in the list
         songs.forEach(s => s.classList.remove('active'));
         song.classList.add('active');
-        
-        audioPlayer.src = `/api/songs/${songId}/`;
+
+        // Set audio source:
+        if (audioUrl) {
+            // Use the proxy endpoint to bypass CORS issues for online songs
+            audioPlayer.src = `/api/proxy-audio/?url=${encodeURIComponent(audioUrl)}`;
+        } else {
+            audioPlayer.src = `/api/songs/${songId}/`;
+        }
+        console.log("Playing song:", title, "from URL:", audioPlayer.src);
         audioPlayer.play().then(() => {
             isPlaying = true;
             playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            if (!audioUrl) {
+                // For local songs, fetch mood and recommendation via API endpoints
+                fetch(`/api/songs/${songId}/classify/`)
+                  .then(response => response.json())
+                  .then(data => {
+                      songMoodEl.textContent = data.mood ? `Mood: ${data.mood}` : 'Mood: Unknown';
+                  })
+                  .catch(err => {
+                      console.error('Error classifying mood:', err);
+                      songMoodEl.textContent = 'Mood: Error';
+                  });
+                fetch(`/api/songs/${songId}/recommend/`)
+                  .then(response => response.json())
+                  .then(data => {
+                      nextSongTitleEl.textContent = data.recommended_song ? data.recommended_song.title : 'None';
+                  })
+                  .catch(err => {
+                      console.error('Error fetching recommendation:', err);
+                      nextSongTitleEl.textContent = 'Error';
+                  });
+            } else {
+                // For online songs, set next recommendation as next song in list (cyclic)
+                let nextIndex = (currentSongIndex + 1) % songs.length;
+                let nextOnlineSong = songs[nextIndex];
+                nextSongTitleEl.textContent = nextOnlineSong ? nextOnlineSong.getAttribute('data-title') : 'None';
+                songMoodEl.textContent = '';
+            }
         }).catch(error => {
             console.error('Error playing song:', error);
             playBtn.innerHTML = '<i class="fas fa-play"></i>';
@@ -175,6 +305,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         tr.setAttribute('data-duration', song.duration);
                         if (song.cover_image) {
                             tr.setAttribute('data-cover', song.cover_image);
+                        }
+                        if (song.mood) {
+                            tr.setAttribute('data-mood', song.mood);
                         }
                         tr.innerHTML = `
                             <td>${song.title}</td>
@@ -260,31 +393,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // ------------------------------
-    // Visualization Setup
+    // High-Quality Visualization Functions
     // ------------------------------
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const sourceNode = audioContext.createMediaElementSource(audioPlayer);
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    sourceNode.connect(analyser);
-    analyser.connect(audioContext.destination);
-
-    // ------------------------------
-    // Visualization Functions (Presets)
-    // ------------------------------
-
-    // Fractal visualization preset
     function drawFractalVisualisation() {
         requestAnimationFrame(drawVisualisation);
         analyser.getByteFrequencyData(dataArray);
         const avgAmplitude = dataArray.reduce((sum, val) => sum + val, 0) / dataArray.length;
-        canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        canvasCtx.fillRect(0, 0, visualiserCanvas.width, visualiserCanvas.height);
+        // Clear with a trailing effect using the canvasCSSHeight constant
+        canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        canvasCtx.fillRect(0, 0, visualiserCanvas.width, canvasCSSHeight);
         canvasCtx.save();
-        canvasCtx.translate(visualiserCanvas.width / 2, visualiserCanvas.height);
-        const initialLength = visualiserCanvas.height / 4 + (avgAmplitude / 255) * 150;
+        // Translate to the center-bottom of the canvas (using canvasCSSHeight)
+        canvasCtx.translate(visualiserCanvas.width / 2, canvasCSSHeight);
+        const initialLength = 100 + (avgAmplitude / 255) * 200;
         const maxDepth = 8;
         const baseBranchAngle = (15 + (avgAmplitude / 255) * 30) * (Math.PI / 180);
         drawFractalTree(0, 0, initialLength, -Math.PI / 2, maxDepth, baseBranchAngle);
@@ -307,29 +428,27 @@ document.addEventListener('DOMContentLoaded', function() {
         drawFractalTree(x2, y2, length * 0.7, angle + baseAngle + randomOffset, depth - 1, baseAngle);
     }
 
-    // Bars visualization preset
     function drawBarsVisualisation() {
         requestAnimationFrame(drawVisualisation);
         analyser.getByteFrequencyData(dataArray);
-        canvasCtx.fillStyle = 'rgb(0, 0, 0)';
-        canvasCtx.fillRect(0, 0, visualiserCanvas.width, visualiserCanvas.height);
+        canvasCtx.clearRect(0, 0, visualiserCanvas.width, canvasCSSHeight);
         const barWidth = (visualiserCanvas.width / bufferLength) * 2.5;
         let x = 0;
         for (let i = 0; i < bufferLength; i++) {
             const barHeight = dataArray[i];
             const hue = (i / bufferLength) * 360;
             canvasCtx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-            canvasCtx.fillRect(x, visualiserCanvas.height - barHeight / 2, barWidth, barHeight / 2);
+            canvasCtx.fillRect(x, canvasCSSHeight - barHeight / 2, barWidth, barHeight / 2);
             x += barWidth + 1;
         }
     }
 
-    // Waveform visualization preset (example)
     function drawWaveformVisualisation() {
         requestAnimationFrame(drawVisualisation);
         analyser.getByteTimeDomainData(dataArray);
-        canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        canvasCtx.fillRect(0, 0, visualiserCanvas.width, visualiserCanvas.height);
+        canvasCtx.clearRect(0, 0, visualiserCanvas.width, canvasCSSHeight);
+        canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        canvasCtx.fillRect(0, 0, visualiserCanvas.width, canvasCSSHeight);
         canvasCtx.lineWidth = 2;
         canvasCtx.strokeStyle = 'lime';
         canvasCtx.beginPath();
@@ -337,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let x = 0;
         for (let i = 0; i < bufferLength; i++) {
             const v = dataArray[i] / 128.0;
-            const y = v * visualiserCanvas.height / 2;
+            const y = v * canvasCSSHeight / 2;
             if (i === 0) {
                 canvasCtx.moveTo(x, y);
             } else {
@@ -345,18 +464,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             x += sliceWidth;
         }
-        canvasCtx.lineTo(visualiserCanvas.width, visualiserCanvas.height / 2);
+        canvasCtx.lineTo(visualiserCanvas.width, canvasCSSHeight / 2);
         canvasCtx.stroke();
     }
 
-    // Particles visualization preset (simple example)
     let particles = [];
     function initParticles() {
         particles = [];
         for (let i = 0; i < 100; i++) {
             particles.push({
                 x: Math.random() * visualiserCanvas.width,
-                y: Math.random() * visualiserCanvas.height,
+                y: Math.random() * canvasCSSHeight,
                 r: Math.random() * 4 + 1,
                 dx: (Math.random() - 0.5) * 2,
                 dy: (Math.random() - 0.5) * 2
@@ -367,14 +485,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function drawParticlesVisualisation() {
         requestAnimationFrame(drawVisualisation);
         analyser.getByteFrequencyData(dataArray);
-        canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        canvasCtx.fillRect(0, 0, visualiserCanvas.width, visualiserCanvas.height);
+        canvasCtx.clearRect(0, 0, visualiserCanvas.width, canvasCSSHeight);
+        canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        canvasCtx.fillRect(0, 0, visualiserCanvas.width, canvasCSSHeight);
         for (let i = 0; i < particles.length; i++) {
             const p = particles[i];
             p.x += p.dx;
             p.y += p.dy;
             if (p.x < 0 || p.x > visualiserCanvas.width) p.dx = -p.dx;
-            if (p.y < 0 || p.y > visualiserCanvas.height) p.dy = -p.dy;
+            if (p.y < 0 || p.y > canvasCSSHeight) p.dy = -p.dy;
             canvasCtx.beginPath();
             canvasCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
             canvasCtx.fillStyle = `hsl(${(dataArray[i % bufferLength] / 255) * 360}, 100%, 50%)`;
@@ -382,7 +501,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Main visualization function that calls the preset based on selection
     function drawVisualisation() {
         if (!visualisationEnabled) return;
         switch (currentVisualisationMode) {

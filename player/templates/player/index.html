@@ -6,43 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>System MP3 Player</title>
   <link rel="stylesheet" href="{% static 'player/css/style.css' %}">
-  <!-- Optionally include an animation/transition library or custom CSS -->
-  <style>
-    /* Example inline styles for modern buttons and smooth transitions */
-    .btn {
-      background-color: #4CAF50;
-      color: #fff;
-      border: none;
-      padding: 10px 20px;
-      margin: 5px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.3s, transform 0.3s;
-    }
-    .btn:hover {
-      background-color: #45a049;
-      transform: scale(1.03);
-    }
-    .btn:active {
-      transform: scale(0.98);
-    }
-    /* Style the select element to match the buttons */
-    select.btn {
-      appearance: none;
-      background-color: #4CAF50;
-      color: #fff;
-      border: none;
-      padding: 10px 20px;
-      margin: 5px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.3s, transform 0.3s;
-    }
-    select.btn:hover {
-      background-color: #45a049;
-      transform: scale(1.03);
-    }
-  </style>
+  <!-- Inline styles for button transitions are included in the CSS file -->
 </head>
 <body>
   <div class="container">
@@ -57,6 +21,8 @@
           <h2 id="song-title">Select a song</h2>
           <p id="song-artist">-</p>
           <p id="song-album">-</p>
+          <!-- Display the mood of the current song -->
+          <p id="song-mood">Mood: Unknown</p>
         </div>
       </div>
       
@@ -80,15 +46,20 @@
             <input type="range" id="volume" min="0" max="1" step="0.01" value="0.7">
           </div>
         </div>
+        <!-- Recommendation button -->
+        <div class="recommendation" style="text-align: center; margin-top: 10px;">
+          <button id="recommendation-btn" class="btn">
+            Next Recommendation: <span id="next-song-title">None</span>
+          </button>
+        </div>
       </div>
     </div>
     
-    <!-- Visualization Container with Modern UI and Preset Selector -->
+    <!-- Visualization Container -->
     <div class="visualisation-container">
       <div class="vis-controls" style="text-align: center; margin-bottom: 10px;">
         <button id="toggle-visualisation" class="btn">Toggle Visualisation</button>
         <button id="fullscreen-visualisation-btn" class="btn">Full Screen</button>
-        <!-- Preset selector for visualisations -->
         <select id="visualisation-select" class="btn">
           <option value="fractal">Fractal</option>
           <option value="bars">Bars</option>
@@ -96,14 +67,20 @@
           <option value="particles">Particles</option>
         </select>
       </div>
-      <canvas id="visualiser" width="800" height="400" style="display: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></canvas>
+      <canvas id="visualiser"></canvas>
     </div>
     
+    <!-- Library Header & Online Search -->
     <div class="library-header">
       <h2>Library</h2>
       <div class="scan-controls">
         <button id="refresh-btn" class="btn">Refresh Library</button>
         <button id="add-directory-btn" class="btn">Add Directory</button>
+        <button id="load-online-btn" class="btn">Load Online Songs</button>
+      </div>
+      <div class="online-search-controls" style="text-align: center; margin-top: 10px;">
+          <input type="text" id="online-search-input" placeholder="Search online songs..." style="padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+          <button id="search-online-btn" class="btn">Search Online Songs</button>
       </div>
     </div>
     
@@ -111,7 +88,6 @@
       <div class="search-bar">
         <input type="text" id="search-input" placeholder="Search for songs...">
       </div>
-      
       <div class="song-list-container">
         <table class="song-table">
           <thead>
@@ -131,7 +107,8 @@
                 data-artist="{{ song.artist }}" 
                 data-album="{{ song.album }}" 
                 data-duration="{{ song.duration }}" 
-                data-cover="{{ song.cover_image|default:'' }}">
+                data-cover="{{ song.cover_image|default:'' }}"
+                data-mood="{{ song.mood|default:'Unknown' }}">
               <td>{{ song.title }}</td>
               <td>{{ song.artist }}</td>
               <td>{{ song.album }}</td>
@@ -148,6 +125,7 @@
     </div>
   </div>
   
+  <!-- Directory Modal -->
   <div id="directory-modal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -161,7 +139,7 @@
     </div>
   </div>
   
-  <audio id="audio-player"></audio>
+  <audio id="audio-player" crossorigin="anonymous"></audio>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
   <script src="{% static 'player/js/player.js' %}"></script>

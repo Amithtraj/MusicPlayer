@@ -1,19 +1,13 @@
 from django.urls import path
-from django_distill import distill_path
 from . import views
 
-app_name = 'player'
-
-def get_index():
-    # No dynamic parameters for the index view, so return None.
-    return None
-
 urlpatterns = [
-    # Use distill_path for static site generation of the index page.
-    distill_path('', views.index, name='index', distill_func=get_index),
-    
-    # API endpoints remain dynamic.
+    path('', views.index, name='index'),
     path('api/songs/', views.get_all_songs, name='get_all_songs'),
     path('api/songs/<str:song_id>/', views.get_song_file, name='get_song_file'),
+    path('api/songs/<str:song_id>/classify/', views.classify_song, name='classify_song'),
+    path('api/songs/<str:song_id>/recommend/', views.recommend_song, name='recommend_song'),
     path('api/directories/add/', views.add_scan_directory, name='add_scan_directory'),
+    path('api/online-songs/', views.get_online_songs, name='get_online_songs'),
+    path('api/proxy-audio/', views.proxy_audio, name='proxy_audio'),
 ]

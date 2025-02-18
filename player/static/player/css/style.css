@@ -59,6 +59,14 @@ h1 {
     margin-bottom: 5px;
 }
 
+/* New style for mood display */
+#song-mood {
+    font-size: 1rem;
+    color: #333;
+    margin-top: 5px;
+}
+
+/* Progress & Time */
 .progress-container {
     margin-bottom: 20px;
 }
@@ -86,6 +94,7 @@ h1 {
     color: #777;
 }
 
+/* Controls */
 .controls {
     display: flex;
     align-items: center;
@@ -119,11 +128,16 @@ h1 {
     width: 100px;
 }
 
+/* Library & Search */
 .library-header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
     margin-bottom: 15px;
+}
+
+.scan-controls {
+    margin-bottom: 10px;
 }
 
 .scan-controls button {
@@ -133,18 +147,47 @@ h1 {
     padding: 8px 15px;
     border-radius: 4px;
     cursor: pointer;
-    margin-left: 10px;
+    margin: 5px;
 }
 
 .scan-controls button:hover {
     background-color: #45a049;
 }
 
+.online-search-controls {
+    margin-top: 10px;
+}
+
+.online-search-controls input {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+    margin-right: 5px;
+}
+
+.online-search-controls button {
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.online-search-controls button:hover {
+    background-color: #45a049;
+    transform: scale(1.03);
+}
+
+/* Library Table */
 .library {
     background-color: #fff;
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     padding: 20px;
+    width: 100%;
 }
 
 .search-bar {
@@ -287,7 +330,6 @@ h1 {
     transform: scale(0.98);
 }
 
-/* Style the select element as a button */
 select.btn {
     appearance: none;
     background-color: #4CAF50;
@@ -305,8 +347,11 @@ select.btn:hover {
     transform: scale(1.03);
 }
 
+/* Canvas styling for visualisation */
 #visualiser {
     display: none;
+    width: 100%;
+    height: 400px;
     margin-top: 10px;
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
