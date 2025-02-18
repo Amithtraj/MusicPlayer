@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System MP3 Player</title>
+  <link rel="stylesheet" href="/static/player/css/style.css">
+  <!-- Optionally include an animation/transition library or custom CSS -->
+  <style>
+    /* Example inline styles for modern buttons and smooth transitions */
+    .btn {
+      background-color: #4CAF50;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.3s;
+    }
+    .btn:hover {
+      background-color: #45a049;
+      transform: scale(1.03);
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+    /* Style the select element to match the buttons */
+    select.btn {
+      appearance: none;
+      background-color: #4CAF50;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.3s;
+    }
+    select.btn:hover {
+      background-color: #45a049;
+      transform: scale(1.03);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>System MP3 Player</h1>
+    
+    <div class="player-container">
+      <div class="player-info">
+        <div class="cover-art">
+          <img id="cover-image" src="/static/player/img/default-cover.jpg" alt="Album Cover">
+        </div>
+        <div class="song-info">
+          <h2 id="song-title">Select a song</h2>
+          <p id="song-artist">-</p>
+          <p id="song-album">-</p>
+        </div>
+      </div>
+      
+      <div class="player-controls">
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+          </div>
+          <div class="time-info">
+            <span id="current-time">0:00</span>
+            <span id="duration">0:00</span>
+          </div>
+        </div>
+        
+        <div class="controls">
+          <button id="prev-btn" class="btn"><i class="fas fa-step-backward"></i></button>
+          <button id="play-btn" class="btn"><i class="fas fa-play"></i></button>
+          <button id="next-btn" class="btn"><i class="fas fa-step-forward"></i></button>
+          <div class="volume-control">
+            <i class="fas fa-volume-up"></i>
+            <input type="range" id="volume" min="0" max="1" step="0.01" value="0.7">
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Visualization Container with Modern UI and Preset Selector -->
+    <div class="visualisation-container">
+      <div class="vis-controls" style="text-align: center; margin-bottom: 10px;">
+        <button id="toggle-visualisation" class="btn">Toggle Visualisation</button>
+        <button id="fullscreen-visualisation-btn" class="btn">Full Screen</button>
+        <!-- Preset selector for visualisations -->
+        <select id="visualisation-select" class="btn">
+          <option value="fractal">Fractal</option>
+          <option value="bars">Bars</option>
+          <option value="wave">Waveform</option>
+          <option value="particles">Particles</option>
+        </select>
+      </div>
+      <canvas id="visualiser" width="800" height="400" style="display: none; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></canvas>
+    </div>
+    
+    <div class="library-header">
+      <h2>Library</h2>
+      <div class="scan-controls">
+        <button id="refresh-btn" class="btn">Refresh Library</button>
+        <button id="add-directory-btn" class="btn">Add Directory</button>
+      </div>
+    </div>
+    
+    <div class="library">
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Search for songs...">
+      </div>
+      
+      <div class="song-list-container">
+        <table class="song-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Artist</th>
+              <th>Album</th>
+              <th>Duration</th>
+            </tr>
+          </thead>
+          <tbody id="song-list">
+            
+            <tr class="song-item" 
+                data-id="39f255cb4f0c5a6cc1998a97054f0cff" 
+                data-path="C:\Users\USER\Downloads\Demo.mp3" 
+                data-title="Demo" 
+                data-artist="Unknown Artist" 
+                data-album="Unknown Album" 
+                data-duration="306" 
+                data-cover="">
+              <td>Demo</td>
+              <td>Unknown Artist</td>
+              <td>Unknown Album</td>
+              <td></td>
+            </tr>
+            
+            <tr class="song-item" 
+                data-id="f62506eccbc8cf04a365d891ce9401aa" 
+                data-path="C:\Users\USER\Downloads\eminem.mp3" 
+                data-title="EMINEM GREATEST HITS 2022 | MUSIC MIX 2022 | BEST PLAYLIST RAP HIP HOP 2022" 
+                data-artist="BEST EVER MUSIC MIX RESOURCES °" 
+                data-album="Unknown Album" 
+                data-duration="5165" 
+                data-cover="">
+              <td>EMINEM GREATEST HITS 2022 | MUSIC MIX 2022 | BEST PLAYLIST RAP HIP HOP 2022</td>
+              <td>BEST EVER MUSIC MIX RESOURCES °</td>
+              <td>Unknown Album</td>
+              <td></td>
+            </tr>
+            
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <div id="directory-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Add Directory to Scan</h2>
+      <p>Enter the full path of the directory you want to scan for MP3 files:</p>
+      <div class="directory-input">
+        <input type="text" id="directory-path" placeholder="/path/to/your/music">
+        <button id="save-directory-btn" class="btn">Add</button>
+      </div>
+      <p class="error-message" id="directory-error"></p>
+    </div>
+  </div>
+  
+  <audio id="audio-player"></audio>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
+  <script src="/static/player/js/player.js"></script>
+</body>
+</html>
